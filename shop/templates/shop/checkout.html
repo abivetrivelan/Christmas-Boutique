@@ -1,0 +1,54 @@
+{% extends 'shop/base.html' %}
+{% block title %}Checkout - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">Home &nbsp; &#10095; &nbsp; Checkout</div>
+
+<div class="container form-wrap">
+    <div class="form-section" data-reveal>
+        <h5>Shipping information</h5>
+        <form method="post" data-validate>
+            {% csrf_token %}
+            <div class="row">
+                <div class="input-group">
+                    <label>First name *</label>
+                    {{ form.first_name }}
+                </div>
+                <div class="input-group">
+                    <label>Last name</label>
+                    {{ form.last_name }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-group">
+                    <label>Email *</label>
+                    {{ form.email }}
+                </div>
+                <div class="input-group">
+                    <label>Phone</label>
+                    {{ form.phone }}
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Address *</label>
+                {{ form.address }}
+            </div>
+            <button type="submit" class="submit-btn">Place Order</button>
+        </form>
+    </div>
+    <div class="form-section" data-reveal style="--i:1">
+        <h5>Order summary</h5>
+        <table class="cart-table">
+            {% for item in cart %}
+            <tr>
+                <td>{{ item.product.name }} &times; {{ item.quantity }}</td>
+                <td>${{ item.total_price }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <div class="cart-summary">
+            <p>Total: <strong>${{ cart.get_total_price }}</strong></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

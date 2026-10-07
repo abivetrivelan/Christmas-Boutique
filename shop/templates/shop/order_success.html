@@ -1,0 +1,12 @@
+{% extends 'shop/base.html' %}
+{% block title %}Order Confirmed - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="auth-wrap" style="text-align:center;">
+    <h2>&#127876; Thank you, {{ order.first_name }}!</h2>
+    <p>Your order <strong>#{{ order.pk }}</strong> has been placed.</p>
+    <p>Total: <strong>${{ order.total_cost }}</strong></p>
+    <p>A confirmation has been sent to {{ order.email }}.</p>
+    <a href="{% url 'shop_all' %}"><button class="submit-btn">Continue Shopping</button></a>
+</div>
+{% endblock %}

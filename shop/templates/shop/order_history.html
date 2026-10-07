@@ -1,0 +1,25 @@
+{% extends 'shop/base.html' %}
+{% block title %}My Orders - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">Home &nbsp; &#10095; &nbsp; My Orders</div>
+<div class="cart-wrap">
+    {% if orders %}
+    <table class="cart-table">
+        <thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>
+        <tbody>
+        {% for order in orders %}
+            <tr>
+                <td>#{{ order.pk }}</td>
+                <td>{{ order.created_at|date:"M d, Y" }}</td>
+                <td>{{ order.get_status_display }}</td>
+                <td>${{ order.total_cost }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>You haven't placed any orders yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

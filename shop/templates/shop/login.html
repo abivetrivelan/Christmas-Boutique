@@ -1,0 +1,22 @@
+{% extends 'shop/base.html' %}
+{% block title %}Login - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="auth-wrap" data-reveal>
+    <h2>Login</h2>
+    <form method="post" data-validate>
+        {% csrf_token %}
+        <div class="input-group">
+            <label>Username</label>
+            {{ form.username }}
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            {{ form.password }}
+        </div>
+        {% if form.errors %}<p style="color:#b3261e;">Invalid username or password.</p>{% endif %}
+        <button type="submit" class="submit-btn">Login</button>
+    </form>
+    <p class="auth-links">New here? <a href="{% url 'register' %}">Create an account</a></p>
+</div>
+{% endblock %}

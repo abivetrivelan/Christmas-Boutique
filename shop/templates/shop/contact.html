@@ -1,0 +1,46 @@
+{% extends 'shop/base.html' %}
+{% block title %}Contact - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">Home &nbsp; &#10095; &nbsp; Contact</div>
+
+<div class="container form-wrap">
+    <div class="form-section" style="flex:2;" data-reveal>
+        <h5>Contact information</h5>
+        <form method="post" data-validate>
+            {% csrf_token %}
+            <div class="row">
+                <div class="input-group">
+                    <label>First name *</label>
+                    {{ form.first_name }}
+                    {{ form.first_name.errors }}
+                </div>
+                <div class="input-group">
+                    <label>Last name</label>
+                    {{ form.last_name }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-group">
+                    <label>Email *</label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+                <div class="input-group">
+                    <label>Address</label>
+                    {{ form.address }}
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Phone</label>
+                {{ form.phone }}
+            </div>
+            <div class="input-group">
+                <label>Additional information</label>
+                {{ form.message }}
+            </div>
+            <button type="submit" class="submit-btn">Submit</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
