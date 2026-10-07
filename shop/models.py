@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
@@ -32,7 +35,11 @@ class Product(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
     description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=8, decimal_places=2)
+    price = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     image_url = models.URLField(max_length=500, help_text='External image URL (or /static/... path)')
     stock = models.PositiveIntegerField(default=20)
     is_featured = models.BooleanField(default=False, help_text='Show on the homepage highlight sections')
@@ -41,6 +48,12 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(price__gt=0),
+                name='product_price_positive',
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -117,8 +130,20 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, related_name='order_items', on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=8, decimal_places=2)
+    price = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
     quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(price__gt=0),
+                name='order_item_price_positive',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.quantity} x {self.product.name}'

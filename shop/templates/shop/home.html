@@ -86,6 +86,7 @@
     <p>New arrivals, thoughtful finds, and a little seasonal inspiration, delivered occasionally.</p>
     <form method="post" action="{% url 'newsletter_signup' %}" data-validate>
         {% csrf_token %}
+        <div class="honeypot-field" aria-hidden="true">{{ newsletter_form.website }}</div>
         <div class="input-group">
             {{ newsletter_form.email }}
         </div>

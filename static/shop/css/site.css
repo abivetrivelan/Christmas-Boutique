@@ -944,6 +944,8 @@ nav.nav-right { order: 2; justify-content: flex-start; }
 .footer-bottom { margin-top: 32px; }
 
 .toast-region { position: fixed; right: 24px; bottom: 24px; z-index: 500; display: grid; gap: 10px; pointer-events: none; }
+.honeypot-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.honeypot-input { position: absolute; left: -10000px; }
 .toast {
     min-width: 240px;
     max-width: min(360px, calc(100vw - 32px));

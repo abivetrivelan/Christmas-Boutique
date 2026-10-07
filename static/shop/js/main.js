@@ -99,7 +99,11 @@ document.addEventListener('click', function (e) {
         },
         body: `quantity=${encodeURIComponent(quantity)}`,
     })
-        .then((res) => res.json())
+        .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Unable to add this item.');
+            return data;
+        })
         .then((data) => {
             updateCartBadge(data.cart_count);
             showToast(`Added ${btn.dataset.productName || 'item'} to your bag.`);
@@ -108,7 +112,7 @@ document.addEventListener('click', function (e) {
             btn.disabled = true;
             setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1300);
         })
-        .catch(() => { showToast('We could not add that just now. Please try again.'); });
+        .catch((error) => { showToast(error.message || 'We could not add that just now. Please try again.'); });
 });
 
 document.querySelectorAll('[data-add-to-cart-url]').forEach((btn) => {

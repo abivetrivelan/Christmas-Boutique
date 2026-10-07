@@ -45,18 +45,27 @@ source .venv/bin/activate        # on Windows: .venv\Scripts\activate
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Set up the database (creates db.sqlite3 with all tables)
+# 3. Configure local environment variables (PowerShell)
+$env:SECRET_KEY = & .\.venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+$env:DEBUG = 'True'
+$env:ALLOWED_HOSTS = 'localhost,127.0.0.1,testserver'
+
+# 4. Set up the database (creates db.sqlite3 with all tables)
 python manage.py migrate
 
-# 4. Load your original products (Trees, Lights, Ornaments) into the DB
+# 5. Load your original products (Trees, Lights, Ornaments) into the DB
 python manage.py seed_data
 
-# 5. Create an admin account
+# 6. Create an admin account
 python manage.py createsuperuser
 
-# 6. Run the server
+# 7. Run the server
 python manage.py runserver
 ```
+
+The deployment environment must provide `SECRET_KEY`, `DEBUG`, and
+`ALLOWED_HOSTS`. `.env.example` documents their expected format; Django does
+not load `.env` files automatically.
 
 Then open:
 - **http://127.0.0.1:8000/** — the storefront

@@ -27,7 +27,7 @@
             <div class="purchase-controls">
                 <div class="qty-stepper">
                     <button type="button" data-qty-step="-1" aria-label="Decrease quantity">&minus;</button>
-                    <input type="number" id="qty" data-qty min="1" max="{{ product.stock }}" value="1">
+                    <input type="number" id="qty" data-qty min="1" max="99" value="1">
                     <button type="button" data-qty-step="1" aria-label="Increase quantity">&plus;</button>
                 </div>
                 {% if product.in_stock %}

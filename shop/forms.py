@@ -5,7 +5,23 @@ from django.contrib.auth.models import User
 from .models import ContactMessage, Newsletter
 
 
-class ContactForm(forms.ModelForm):
+class HoneypotFormMixin:
+    def clean_website(self):
+        if self.cleaned_data.get('website'):
+            raise forms.ValidationError('Invalid submission.')
+        return ''
+
+
+class ContactForm(HoneypotFormMixin, forms.ModelForm):
+    website = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'honeypot-input',
+            'autocomplete': 'off',
+            'tabindex': '-1',
+        }),
+    )
+
     class Meta:
         model = ContactMessage
         fields = ['first_name', 'last_name', 'email', 'address', 'phone', 'message']
@@ -22,7 +38,20 @@ class CheckoutForm(forms.Form):
     phone = forms.CharField(max_length=20, required=False)
 
 
-class NewsletterForm(forms.ModelForm):
+class CartQuantityForm(forms.Form):
+    quantity = forms.IntegerField(min_value=1, max_value=99)
+
+
+class NewsletterForm(HoneypotFormMixin, forms.ModelForm):
+    website = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'honeypot-input',
+            'autocomplete': 'off',
+            'tabindex': '-1',
+        }),
+    )
+
     class Meta:
         model = Newsletter
         fields = ['email']

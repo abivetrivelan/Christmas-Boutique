@@ -1,13 +1,22 @@
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .cart import Cart
-from .forms import CheckoutForm, ContactForm, NewsletterForm, RegisterForm
+from .forms import CartQuantityForm, CheckoutForm, ContactForm, NewsletterForm, RegisterForm
 from .models import Category, Order, OrderItem, Product
+
+
+def invalid_cart_quantity_response(request, message='Choose a quantity from 1 to 99.'):
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'error': message}, status=400)
+    messages.error(request, message)
+    return redirect('cart_detail')
 
 
 def home(request):
@@ -71,8 +80,13 @@ def cart_detail(request):
 def cart_add(request, product_id):
     cart = Cart(request)
     product = get_object_or_404(Product, id=product_id)
-    quantity = int(request.POST.get('quantity', 1))
-    cart.add(product=product, quantity=quantity)
+    form = CartQuantityForm({'quantity': request.POST.get('quantity', '1')})
+    if not form.is_valid():
+        return invalid_cart_quantity_response(request)
+    try:
+        cart.add(product=product, quantity=form.cleaned_data['quantity'])
+    except ValueError as error:
+        return invalid_cart_quantity_response(request, str(error))
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'cart_count': len(cart), 'cart_total': str(cart.get_total_price())})
@@ -95,8 +109,13 @@ def cart_remove(request, product_id):
 def cart_update(request, product_id):
     cart = Cart(request)
     product = get_object_or_404(Product, id=product_id)
-    quantity = int(request.POST.get('quantity', 1))
-    cart.add(product=product, quantity=quantity, override_quantity=True)
+    form = CartQuantityForm({'quantity': request.POST.get('quantity', '1')})
+    if not form.is_valid():
+        return invalid_cart_quantity_response(request)
+    try:
+        cart.add(product=product, quantity=form.cleaned_data['quantity'], override_quantity=True)
+    except ValueError as error:
+        return invalid_cart_quantity_response(request, str(error))
     return redirect('cart_detail')
 
 
@@ -117,21 +136,22 @@ def checkout(request):
     if request.method == 'POST':
         form = CheckoutForm(request.POST)
         if form.is_valid():
-            order = Order.objects.create(
-                user=request.user if request.user.is_authenticated else None,
-                first_name=form.cleaned_data['first_name'],
-                last_name=form.cleaned_data['last_name'],
-                email=form.cleaned_data['email'],
-                address=form.cleaned_data['address'],
-                phone=form.cleaned_data['phone'],
-            )
-            for item in cart:
-                OrderItem.objects.create(
-                    order=order,
-                    product=item['product'],
-                    price=item['product'].price,
-                    quantity=item['quantity'],
+            with transaction.atomic():
+                order = Order.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    first_name=form.cleaned_data['first_name'],
+                    last_name=form.cleaned_data['last_name'],
+                    email=form.cleaned_data['email'],
+                    address=form.cleaned_data['address'],
+                    phone=form.cleaned_data['phone'],
                 )
+                for item in cart:
+                    OrderItem.objects.create(
+                        order=order,
+                        product=item['product'],
+                        price=item['product'].price,
+                        quantity=item['quantity'],
+                    )
             cart.clear()
             return render(request, 'shop/order_success.html', {'order': order})
     else:
@@ -160,7 +180,14 @@ def newsletter_signup(request):
         messages.success(request, 'You are subscribed! Watch your inbox for HoHoHo deals.')
     else:
         messages.error(request, 'Please enter a valid email address.')
-    return redirect(request.META.get('HTTP_REFERER', 'home'))
+    referer = request.META.get('HTTP_REFERER', '')
+    if referer and url_has_allowed_host_and_scheme(
+        referer,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(referer)
+    return redirect('home')
 
 
 def register_view(request):

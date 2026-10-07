@@ -2,6 +2,7 @@ from decimal import Decimal
 from .models import Product
 
 CART_SESSION_ID = 'cart'
+MAX_CART_QUANTITY = 99
 
 
 class Cart:
@@ -19,17 +20,16 @@ class Cart:
         self.cart = cart
 
     def add(self, product, quantity=1, override_quantity=False):
+        if isinstance(quantity, bool) or not isinstance(quantity, int) or not 1 <= quantity <= MAX_CART_QUANTITY:
+            raise ValueError('Quantity must be between 1 and 99.')
+
         product_id = str(product.id)
-        if product_id not in self.cart:
-            self.cart[product_id] = 0
-        if override_quantity:
-            self.cart[product_id] = quantity
-        else:
-            self.cart[product_id] += quantity
-        if self.cart[product_id] <= 0:
-            self.remove(product)
-        else:
-            self.save()
+        current_quantity = self.cart.get(product_id, 0)
+        new_quantity = quantity if override_quantity else current_quantity + quantity
+        if new_quantity > MAX_CART_QUANTITY:
+            raise ValueError('A maximum of 99 items can be added per product.')
+        self.cart[product_id] = new_quantity
+        self.save()
 
     def remove(self, product):
         product_id = str(product.id)
