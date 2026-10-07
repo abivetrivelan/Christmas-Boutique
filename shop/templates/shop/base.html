@@ -1,0 +1,124 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}The Christmas Boutique{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'shop/css/web.css' %}">
+    <link rel="stylesheet" href="{% static 'shop/css/site.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="scroll-indicator" aria-hidden="true"><span></span></div>
+<div class="season-ribbon">
+    <span>THE WINTER EDITION</span>
+    <span class="ribbon-divider" aria-hidden="true"></span>
+    <span>Considered pieces for the season</span>
+</div>
+
+<header class="site-header">
+    <a href="{% url 'home' %}" class="logo" aria-label="The Christmas Boutique home">
+        <span class="logo-mark" aria-hidden="true">C</span>
+        <span class="logo-type">The Christmas <em>Boutique</em></span>
+    </a>
+
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="primary-navigation">
+        <span class="nav-toggle-icon" aria-hidden="true"><i></i><i></i></span>
+        <span class="nav-toggle-label">Explore</span>
+    </button>
+
+    <nav id="primary-navigation" class="nav-left" aria-label="Main navigation">
+        <a href="{% url 'shop_all' %}" class="{% if request.resolver_match.url_name == 'shop_all' %}active{% endif %}">Shop All</a>
+        <a href="{% url 'category_detail' 'ornaments' %}" class="{% if request.resolver_match.kwargs.cat_slug == 'ornaments' %}active{% endif %}">Ornaments</a>
+        <a href="{% url 'category_detail' 'trees' %}" class="{% if request.resolver_match.kwargs.cat_slug == 'trees' %}active{% endif %}">Trees</a>
+        <a href="{% url 'category_detail' 'lights' %}" class="{% if request.resolver_match.kwargs.cat_slug == 'lights' %}active{% endif %}">Lights</a>
+        <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}">Contact</a>
+        <div class="mobile-account">
+            {% if user.is_authenticated %}
+                <a href="{% url 'order_history' %}">My Orders</a>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit">Logout ({{ user.username }})</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'register' %}">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <nav class="nav-right" aria-label="Account and shopping">
+        {% if user.is_authenticated %}
+            <a href="{% url 'order_history' %}">My Orders</a>
+            <form action="{% url 'logout' %}" method="post" class="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">Logout ({{ user.username }})</button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'register' %}">Register</a>
+        {% endif %}
+        <a href="{% url 'cart_detail' %}" class="cart-link">Bag
+            <span class="cart-badge" aria-live="polite" aria-atomic="true">{{ nav_cart|length }}</span>
+        </a>
+    </nav>
+</header>
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <div class="footer-note">
+        <span class="footer-note-mark" aria-hidden="true">C</span>
+        <p>Make the season yours.</p>
+        <a href="{% url 'shop_all' %}">Explore the collection <span aria-hidden="true">&#8599;</span></a>
+    </div>
+    <div class="footer-container">
+        <div class="footer-column">
+            <ul>
+                <li><a href="{% url 'shop_all' %}">Shop All</a></li>
+                <li><a href="{% url 'category_detail' 'ornaments' %}">Ornaments</a></li>
+                <li><a href="{% url 'category_detail' 'trees' %}">Trees</a></li>
+                <li><a href="{% url 'category_detail' 'lights' %}">Lights</a></li>
+                <li><a href="{% url 'contact' %}">Contact</a></li>
+            </ul>
+        </div>
+        <div class="footer-column">
+            <p>500 Terry Francine Street,<br>San Francisco, CA 94158</p>
+            <p><a href="mailto:info@mysite.com">info@mysite.com</a></p>
+            <p><a href="tel:1234567890">123-456-7890</a></p>
+        </div>
+        <div class="footer-column">
+            <ul>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Refund Policy</a></li>
+                <li><a href="#">Shipping Policy</a></li>
+                <li><a href="#">Terms &amp; Conditions</a></li>
+                <li><a href="#">Accessibility Statement</a></li>
+                <li><a href="#">FAQ</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2035 by The Christmas Boutique. Built with Django.</p>
+    </div>
+</footer>
+
+<div class="toast-region" aria-live="polite" aria-atomic="true"></div>
+<script src="{% static 'shop/js/main.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

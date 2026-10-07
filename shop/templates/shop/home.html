@@ -1,0 +1,95 @@
+{% extends 'shop/base.html' %}
+{% load static %}
+{% block title %}The Christmas Boutique - Home{% endblock %}
+
+{% block content %}
+<section class="hero" aria-labelledby="hero-title">
+    <canvas class="hero-canvas" aria-hidden="true"></canvas>
+    <div class="hero-frame">
+        <div class="hero-content" data-reveal>
+            <p class="eyebrow"><span class="hero-index">01</span> Holiday collection / 2026</p>
+            <h1 id="hero-title">Make room<br><em>for wonder.</em></h1>
+            <p>Thoughtful ornaments, gathered greenery, and little rituals that make the season feel like yours.</p>
+            <div class="hero-actions">
+                <a class="round" href="{% url 'shop_all' %}">Shop the collection <span aria-hidden="true">&#8599;</span></a>
+                <a class="hero-secondary" href="#seasonal-collections">Discover the edit <span aria-hidden="true">&#8595;</span></a>
+            </div>
+        </div>
+        <div class="hero-side-note" aria-hidden="true">
+            <span>Gather / Give / Keep</span>
+            <span class="hero-side-rule"></span>
+            <span>Objects for a<br>slower December</span>
+        </div>
+    </div>
+    <div class="hero-caption"><span>Collected with care, for the most wonderful time.</span><a href="#seasonal-collections">Scroll to explore <span aria-hidden="true">&#8595;</span></a></div>
+</section>
+
+<section id="seasonal-collections" class="collection-section">
+    <div class="section-intro" data-reveal>
+        <p class="section-kicker">A little something for every corner</p>
+        <h2>Find your kind<br>of <em>Christmas.</em></h2>
+        <p>Small details, lasting traditions. Start with the things you love most.</p>
+    </div>
+    <div class="cat" data-reveal-group>
+    {% for category in categories %}
+    <a href="{{ category.get_absolute_url }}" class="card" data-reveal style="--i:{{ forloop.counter0 }}">
+        {% with p=category.products.first %}
+            {% if p %}<img src="{{ p.image_url }}" alt="{{ category.name }} collection" loading="lazy">{% endif %}
+        {% endwith %}
+        <div class="card-label">
+            <span class="card-index">0{{ forloop.counter }}</span>
+            <h3>{{ category.name }}</h3>
+            <span class="card-link">Explore collection <span aria-hidden="true">&#8599;</span></span>
+        </div>
+    </a>
+    {% empty %}
+        <p style="text-align:center; grid-column: 1/-1; color: var(--muted);">No categories yet — add some in the admin panel.</p>
+    {% endfor %}
+</div>
+</section>
+
+<section class="cat1" aria-label="Seasonal offer">
+    <div class="card2">
+        {% if bestsellers.0 %}<img src="{{ bestsellers.0.image_url }}" alt="A seasonal favorite from the collection" loading="lazy">{% endif %}
+        <span class="promo-image-label">A favorite, wrapped in winter</span>
+    </div>
+    <div class="card2" data-reveal>
+        <p class="section-kicker">A festive little extra</p>
+        <h2>Bring a little<br><em>more wonder.</em></h2>
+        <p>Find keepsakes to bring out year after year, and new favorites to make your own.</p>
+        <a class="promo-link" href="{% url 'shop_all' %}">Shop the edit <span aria-hidden="true">&#8599;</span></a>
+    </div>
+</section>
+
+<div class="section-head section-head-split" data-reveal>
+    <div><p class="section-kicker">The pieces we keep close</p><h2>This season's <em>favorites.</em></h2></div>
+    <p>Hand-picked details to make the everyday feel a little more magical.</p>
+</div>
+<div class="cat2" data-reveal-group>
+    {% for product in featured_products %}
+    <div class="card3" data-reveal style="--i:{{ forloop.counter0 }}">
+        <a href="{{ product.get_absolute_url }}">
+            <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+            <h4>{{ product.name }}</h4>
+            <p>${{ product.price }}</p>
+        </a>
+    </div>
+    {% empty %}
+        <p style="color: var(--muted);">No featured products yet.</p>
+    {% endfor %}
+</div>
+
+<div class="newsletter-card" data-reveal>
+    <span class="newsletter-mark" aria-hidden="true">C</span>
+    <p class="section-kicker">A note from the workshop</p>
+    <h5>Join our newsletter</h5>
+    <p>New arrivals, thoughtful finds, and a little seasonal inspiration, delivered occasionally.</p>
+    <form method="post" action="{% url 'newsletter_signup' %}" data-validate>
+        {% csrf_token %}
+        <div class="input-group">
+            {{ newsletter_form.email }}
+        </div>
+        <button type="submit" class="submit-btn">Subscribe</button>
+    </form>
+</div>
+{% endblock %}

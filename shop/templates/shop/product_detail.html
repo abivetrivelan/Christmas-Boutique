@@ -1,0 +1,59 @@
+{% extends 'shop/base.html' %}
+{% block title %}{{ product.name }} - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'home' %}">Home</a> <span aria-hidden="true">/</span> <a href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a> <span aria-hidden="true">/</span> {{ product.name }}
+</div>
+
+<div class="pd-wrap" data-reveal-group>
+    <div class="pd-image" data-reveal>
+        <span class="image-index">The collection / No. 01</span>
+        <img src="{{ product.image_url }}" alt="{{ product.name }}" fetchpriority="high">
+    </div>
+    <div class="pd-info" data-reveal style="--i:1">
+        <p class="section-kicker">{{ product.category.name }} / Made for the moment</p>
+        <h1>{{ product.name }}</h1>
+        <p class="price">${{ product.price }}</p>
+        <p>{{ product.description|default:"A festive favorite from The Christmas Boutique." }}</p>
+        {% if product.in_stock %}
+            <p class="stock-note"><span class="stock-dot" aria-hidden="true"></span>In stock <span class="stock-note-detail">({{ product.stock }} available)</span></p>
+        {% else %}
+            <p class="out-of-stock">Out of stock</p>
+        {% endif %}
+
+        <div class="product-actions">
+            <label for="qty">Choose a quantity</label>
+            <div class="purchase-controls">
+                <div class="qty-stepper">
+                    <button type="button" data-qty-step="-1" aria-label="Decrease quantity">&minus;</button>
+                    <input type="number" id="qty" data-qty min="1" max="{{ product.stock }}" value="1">
+                    <button type="button" data-qty-step="1" aria-label="Increase quantity">&plus;</button>
+                </div>
+                {% if product.in_stock %}
+                <button data-add-to-cart-url="{% url 'cart_add' product.id %}" data-product-name="{{ product.name }}" class="submit-btn purchase-button">Add to bag <span aria-hidden="true">&#8599;</span></button>
+                {% else %}
+                <button class="submit-btn" disabled>Sold Out</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if related %}
+<h3 style="margin:0 20px;">You may also like</h3>
+<div class="related-grid">
+    {% for r in related %}
+    <div class="product">
+        <a href="{{ r.get_absolute_url }}">
+            <img src="{{ r.image_url }}" alt="{{ r.name }}" style="width:100%;height:220px;object-fit:cover;">
+        </a>
+        <div class="product-info">
+            <h3 style="font-size:14px;">{{ r.name }}</h3>
+            <p>${{ r.price }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

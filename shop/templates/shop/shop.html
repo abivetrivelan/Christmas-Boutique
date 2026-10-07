@@ -1,0 +1,58 @@
+{% extends 'shop/base.html' %}
+{% block title %}{% if category %}{{ category.name }}{% else %}All Products{% endif %} - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'home' %}">Home</a> <span aria-hidden="true">/</span> {% if category %}{{ category.name }}{% else %}The collection{% endif %}
+</div>
+
+<section class="catalog-intro" data-reveal>
+    <p class="section-kicker">The Christmas Boutique / Curated for you</p>
+    <h1>{% if category %}The art of <em>{{ category.name }}.</em>{% else %}The <em>collection.</em>{% endif %}</h1>
+    <p>Find the pieces that make your season feel like home.</p>
+</section>
+
+<div class="categories" aria-label="Shop by collection">
+    <a href="{% url 'shop_all' %}" class="{% if not category %}active{% endif %}">All Products</a>
+    {% for c in categories %}
+        <a href="{{ c.get_absolute_url }}" class="{% if category and category.slug == c.slug %}active{% endif %}">{{ c.name }}</a>
+    {% endfor %}
+</div>
+
+<form method="get" class="shop-toolbar">
+    <label class="search-field"><span class="search-icon" aria-hidden="true"></span><span class="visually-hidden">Search products</span><input type="search" name="q" placeholder="Search the collection" value="{{ query }}"></label>
+    <label class="sort-field"><span>Arrange by</span><select name="sort" onchange="this.form.submit()">
+        <option value="">Sort by</option>
+        <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
+        <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+        <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+    </select></label>
+</form>
+
+<section class="products">
+    <p class="count"><span>Collected for the season</span><span>{{ products|length }} piece{{ products|length|pluralize }}</span></p>
+    <div class="product-grid" data-reveal-group>
+        {% for product in products %}
+        <div class="product" data-reveal style="--i:{{ forloop.counter0 }}">
+            <a href="{{ product.get_absolute_url }}" class="img-wrap">
+                <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+            </a>
+            <div class="product-info">
+                <div>
+                    <h3><a href="{{ product.get_absolute_url }}" style="color:inherit;text-decoration:none;">{{ product.name }}</a></h3>
+                    {% if not product.in_stock %}<span class="out-of-stock">Out of stock</span>{% endif %}
+                </div>
+                <p>${{ product.price }}</p>
+            </div>
+            <div class="product-actions">
+                <button {% if product.in_stock %}data-add-to-cart-url="{% url 'cart_add' product.id %}" data-product-name="{{ product.name }}"{% else %}disabled{% endif %} class="submit-btn">
+                    {% if product.in_stock %}Add to Cart{% else %}Sold Out{% endif %}
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state"><span class="empty-state-mark" aria-hidden="true">C</span><h2>A quiet little corner.</h2><p>No pieces found{% if query %} for &ldquo;{{ query }}&rdquo;{% endif %}.</p><a class="text-link" href="{% url 'shop_all' %}">Browse the full collection <span aria-hidden="true">&#8599;</span></a></div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
