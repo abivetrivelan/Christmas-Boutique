@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -10,6 +11,10 @@ from django.views.decorators.http import require_POST
 from .cart import Cart
 from .forms import CartQuantityForm, CheckoutForm, ContactForm, NewsletterForm, RegisterForm
 from .models import Category, Order, OrderItem, Product
+
+
+class StockUnavailableError(Exception):
+    pass
 
 
 def invalid_cart_quantity_response(request, message='Choose a quantity from 1 to 99.'):
@@ -136,22 +141,59 @@ def checkout(request):
     if request.method == 'POST':
         form = CheckoutForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                order = Order.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    first_name=form.cleaned_data['first_name'],
-                    last_name=form.cleaned_data['last_name'],
-                    email=form.cleaned_data['email'],
-                    address=form.cleaned_data['address'],
-                    phone=form.cleaned_data['phone'],
-                )
-                for item in cart:
-                    OrderItem.objects.create(
-                        order=order,
-                        product=item['product'],
-                        price=item['product'].price,
-                        quantity=item['quantity'],
+            cart_items = list(cart)
+            try:
+                with transaction.atomic():
+                    product_ids = sorted({item['product'].pk for item in cart_items})
+                    locked_products = {
+                        product.pk: product
+                        for product in Product.objects.select_for_update()
+                        .filter(pk__in=product_ids)
+                        .order_by('pk')
+                    }
+
+                    for item in cart_items:
+                        product = locked_products.get(item['product'].pk)
+                        available = product.stock if product else 0
+                        if available < item['quantity']:
+                            raise StockUnavailableError(
+                                f'Only {available} of "{item["product"].name}" are available. '
+                                'Please update your cart.'
+                            )
+
+                    for item in cart_items:
+                        product_id = item['product'].pk
+                        quantity = item['quantity']
+                        updated = Product.objects.filter(
+                            pk=product_id,
+                            stock__gte=quantity,
+                        ).update(stock=F('stock') - quantity)
+                        if not updated:
+                            product = locked_products[product_id]
+                            raise StockUnavailableError(
+                                f'"{product.name}" is no longer available in that quantity. '
+                                'Please update your cart.'
+                            )
+
+                    order = Order.objects.create(
+                        user=request.user if request.user.is_authenticated else None,
+                        first_name=form.cleaned_data['first_name'],
+                        last_name=form.cleaned_data['last_name'],
+                        email=form.cleaned_data['email'],
+                        address=form.cleaned_data['address'],
+                        phone=form.cleaned_data['phone'],
                     )
+                    for item in cart_items:
+                        product = locked_products[item['product'].pk]
+                        OrderItem.objects.create(
+                            order=order,
+                            product=product,
+                            price=product.price,
+                            quantity=item['quantity'],
+                        )
+            except StockUnavailableError as error:
+                messages.error(request, str(error))
+                return redirect('cart_detail')
             cart.clear()
             return render(request, 'shop/order_success.html', {'order': order})
     else:

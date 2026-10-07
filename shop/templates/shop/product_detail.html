@@ -16,10 +16,12 @@
         <h1>{{ product.name }}</h1>
         <p class="price">${{ product.price }}</p>
         <p>{{ product.description|default:"A festive favorite from The Christmas Boutique." }}</p>
-        {% if product.in_stock %}
-            <p class="stock-note"><span class="stock-dot" aria-hidden="true"></span>In stock <span class="stock-note-detail">({{ product.stock }} available)</span></p>
+        {% if product.stock == 0 %}
+            <p class="out-of-stock">Sold out</p>
+        {% elif product.stock <= 5 %}
+            <p class="stock-note is-low-stock"><span class="stock-dot" aria-hidden="true"></span>Only {{ product.stock }} left</p>
         {% else %}
-            <p class="out-of-stock">Out of stock</p>
+            <p class="stock-note"><span class="stock-dot" aria-hidden="true"></span>In stock</p>
         {% endif %}
 
         <div class="product-actions">
@@ -27,7 +29,7 @@
             <div class="purchase-controls">
                 <div class="qty-stepper">
                     <button type="button" data-qty-step="-1" aria-label="Decrease quantity">&minus;</button>
-                    <input type="number" id="qty" data-qty min="1" max="99" value="1">
+                    <input type="number" id="qty" data-qty min="1" max="{% if product.stock < 99 %}{{ product.stock }}{% else %}99{% endif %}" value="1" {% if not product.in_stock %}disabled{% endif %}>
                     <button type="button" data-qty-step="1" aria-label="Increase quantity">&plus;</button>
                 </div>
                 {% if product.in_stock %}

@@ -461,6 +461,8 @@ input:focus, textarea:focus, select:focus {
     width: auto; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer;
 }
 .out-of-stock { color: var(--burgundy); font-size: 0.82rem; font-weight: 600; }
+.stock-badge { display: inline-block; margin-top: 5px; color: var(--burgundy); font-size: 10px; font-weight: 600; }
+.stock-badge.is-sold-out { color: var(--muted); }
 
 /* ===== Footer ===== */
 .footer {
@@ -915,6 +917,8 @@ nav.nav-right { order: 2; justify-content: flex-start; }
 .pd-info .price { margin: 16px 0; color: var(--burgundy); font-size: 24px; }
 .pd-info > p:not(.section-kicker):not(.price):not(.stock-note) { max-width: 440px; margin: 23px 0; color: var(--muted); font-size: 14px; line-height: 1.8; }
 .stock-note { display: flex; align-items: center; gap: 8px; color: var(--forest) !important; font-size: 11px; font-weight: 600; }
+.stock-note.is-low-stock { color: var(--burgundy) !important; }
+.stock-note.is-low-stock .stock-dot { background: var(--burgundy); box-shadow: 0 0 0 4px rgba(122, 31, 43, 0.12); }
 .stock-dot { width: 7px; height: 7px; border-radius: 50%; background: #53845C; box-shadow: 0 0 0 4px rgba(83, 132, 92, 0.13); }
 .stock-note-detail { color: var(--muted); font-weight: 400; }
 .pd-info .product-actions { margin-top: 35px; }

@@ -23,11 +23,16 @@ class Cart:
         if isinstance(quantity, bool) or not isinstance(quantity, int) or not 1 <= quantity <= MAX_CART_QUANTITY:
             raise ValueError('Quantity must be between 1 and 99.')
 
+        if product.stock == 0:
+            raise ValueError('This item is sold out.')
+
         product_id = str(product.id)
         current_quantity = self.cart.get(product_id, 0)
         new_quantity = quantity if override_quantity else current_quantity + quantity
         if new_quantity > MAX_CART_QUANTITY:
             raise ValueError('A maximum of 99 items can be added per product.')
+        if new_quantity > product.stock:
+            raise ValueError(f'Only {product.stock} of this item are available.')
         self.cart[product_id] = new_quantity
         self.save()
 

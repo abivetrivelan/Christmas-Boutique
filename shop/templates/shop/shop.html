@@ -40,7 +40,11 @@
             <div class="product-info">
                 <div>
                     <h3><a href="{{ product.get_absolute_url }}" style="color:inherit;text-decoration:none;">{{ product.name }}</a></h3>
-                    {% if not product.in_stock %}<span class="out-of-stock">Out of stock</span>{% endif %}
+                    {% if product.stock == 0 %}
+                        <span class="stock-badge is-sold-out">Sold out</span>
+                    {% elif product.stock <= 5 %}
+                        <span class="stock-badge">Only {{ product.stock }} left</span>
+                    {% endif %}
                 </div>
                 <p>${{ product.price }}</p>
             </div>

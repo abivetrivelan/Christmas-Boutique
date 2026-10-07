@@ -19,7 +19,7 @@
                 <td>
                     <form method="post" action="{% url 'cart_update' item.product.id %}" style="display:flex;gap:6px;align-items:center;">
                         {% csrf_token %}
-                        <input type="number" name="quantity" min="1" max="99" value="{{ item.quantity }}" class="qty-input">
+                        <input type="number" name="quantity" min="1" max="{% if item.product.stock < 99 %}{{ item.product.stock }}{% else %}99{% endif %}" value="{{ item.quantity }}" class="qty-input">
                         <button type="submit" class="submit-btn" style="padding:6px 10px;">Update</button>
                     </form>
                 </td>
