@@ -62,6 +62,30 @@ class StorefrontTests(TestCase):
 				self.assertEqual(response.status_code, 400)
 				self.assertEqual(self.client.session.get('cart', {}), {})
 
+	def test_flat_coupon_cannot_reduce_order_below_zero(self):
+		from .models import Coupon
+
+		coupon = Coupon.objects.create(
+			code='BIG-SAVING',
+			discount_type='flat',
+			value=Decimal('50.00'),
+		)
+		self.client.post(
+			reverse('cart_add', args=[self.product.pk]),
+			{'quantity': '1'},
+		)
+		self.client.post(reverse('cart_apply_coupon'), {'code': coupon.code})
+		cart_response = self.client.get(reverse('cart_detail'))
+		self.assertContains(cart_response, '-$19.95')
+		self.assertContains(cart_response, '$0.00')
+
+		response = self.client.post(reverse('checkout'), self.checkout_data())
+
+		self.assertEqual(response.status_code, 200)
+		order = Order.objects.get()
+		self.assertEqual(order.discount_amount, Decimal('19.95'))
+		self.assertEqual(order.total_cost, Decimal('0.00'))
+
 	def test_product_page_provides_csrf_for_ajax_cart_add(self):
 		csrf_client = Client(enforce_csrf_checks=True)
 		rejected = csrf_client.post(
@@ -224,6 +248,109 @@ class StorefrontTests(TestCase):
 		self.assertEqual(item.price, Decimal('19.95'))
 		self.assertEqual(order.total_cost, Decimal('39.90'))
 		self.assertEqual(self.client.session.get('cart'), {})
+
+	def test_percentage_coupon_is_applied_and_saved_on_order(self):
+		from .models import Coupon
+
+		coupon = Coupon.objects.create(
+			code='HOHOHO',
+			discount_type='percent',
+			value=Decimal('10.00'),
+			minimum_order=Decimal('20.00'),
+			usage_limit=2,
+		)
+		self.client.post(
+			reverse('cart_add', args=[self.product.pk]),
+			{'quantity': '2'},
+		)
+
+		apply_response = self.client.post(
+			reverse('cart_apply_coupon'),
+			{'code': 'hohoho'},
+		)
+		self.assertRedirects(apply_response, reverse('cart_detail'))
+		cart_response = self.client.get(reverse('cart_detail'))
+		self.assertContains(cart_response, 'HOHOHO')
+		self.assertContains(cart_response, '$3.99')
+		self.assertContains(cart_response, '$35.91')
+
+		checkout_response = self.client.post(reverse('checkout'), self.checkout_data())
+
+		self.assertEqual(checkout_response.status_code, 200)
+		order = Order.objects.get()
+		self.assertEqual(order.coupon, coupon)
+		self.assertEqual(order.discount_amount, Decimal('3.99'))
+		self.assertEqual(order.total_cost, Decimal('35.91'))
+		coupon.refresh_from_db()
+		self.assertEqual(coupon.used_count, 1)
+		self.assertNotIn('coupon_code', self.client.session)
+
+	def test_coupon_rejects_expired_minimum_and_exhausted_codes(self):
+		from datetime import timedelta
+		from django.utils import timezone
+		from .models import Coupon
+
+		coupons = [
+			(Coupon.objects.create(
+				code='EXPIRED',
+				discount_type='percent',
+				value=Decimal('10.00'),
+				expires_at=timezone.now() - timedelta(days=1),
+			), 'expired'),
+			(Coupon.objects.create(
+				code='MINIMUM',
+				discount_type='flat',
+				value=Decimal('5.00'),
+				minimum_order=Decimal('25.00'),
+			), 'Spend at least'),
+			(Coupon.objects.create(
+				code='USED',
+				discount_type='percent',
+				value=Decimal('10.00'),
+				usage_limit=1,
+				used_count=1,
+			), 'limit'),
+		]
+		self.client.post(
+			reverse('cart_add', args=[self.product.pk]),
+			{'quantity': '1'},
+		)
+
+		for coupon, error_text in coupons:
+			with self.subTest(code=coupon.code):
+				response = self.client.post(
+					reverse('cart_apply_coupon'),
+					{'code': coupon.code},
+					follow=True,
+				)
+				self.assertEqual(response.status_code, 200)
+				cart_response = self.client.get(reverse('cart_detail'))
+				self.assertContains(response, error_text)
+
+	def test_checkout_revalidates_coupon_usage_limit(self):
+		from .models import Coupon
+
+		coupon = Coupon.objects.create(
+			code='ONE-USE',
+			discount_type='flat',
+			value=Decimal('2.00'),
+			usage_limit=1,
+		)
+		self.client.post(
+			reverse('cart_add', args=[self.product.pk]),
+			{'quantity': '1'},
+		)
+		self.client.post(reverse('cart_apply_coupon'), {'code': coupon.code})
+		coupon.used_count = 1
+		coupon.save(update_fields=['used_count'])
+
+		response = self.client.post(reverse('checkout'), self.checkout_data())
+
+		self.assertRedirects(response, reverse('cart_detail'))
+		self.assertEqual(Order.objects.count(), 0)
+		self.product.refresh_from_db()
+		self.assertEqual(self.product.stock, 20)
+		self.assertEqual(self.client.session['cart'], {str(self.product.pk): 1})
 
 	def test_checkout_confirmation_escapes_customer_input(self):
 		self.client.post(

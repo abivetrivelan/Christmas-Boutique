@@ -35,8 +35,34 @@
         </tbody>
     </table>
 
+    <section class="coupon-panel" aria-labelledby="coupon-heading">
+        <div>
+            <p class="section-kicker">A festive extra</p>
+            <h2 id="coupon-heading">Have a coupon?</h2>
+            {% if coupon and not coupon_error %}
+                <p class="coupon-applied">{{ coupon.code }} applied</p>
+                <form method="post" action="{% url 'cart_remove_coupon' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="remove-link">Remove code</button>
+                </form>
+            {% else %}
+                {% if coupon_error %}<p class="coupon-error">{{ coupon_error }}</p>{% endif %}
+                <form method="post" action="{% url 'cart_apply_coupon' %}" class="coupon-form">
+                    {% csrf_token %}
+                    <label for="{{ coupon_form.code.id_for_label }}">Coupon code</label>
+                    {{ coupon_form.code }}
+                    <button type="submit" class="submit-btn">Apply</button>
+                </form>
+            {% endif %}
+        </div>
+    </section>
+
     <div class="cart-summary">
-        <p>Total: <strong>${{ cart.get_total_price }}</strong></p>
+        <p>Subtotal: <strong>${{ cart.get_total_price }}</strong></p>
+        {% if coupon and not coupon_error %}
+            <p class="discount-line">Discount ({{ coupon.code }}): <strong>-${{ discount_amount }}</strong></p>
+        {% endif %}
+        <p>Total: <strong>${{ final_total }}</strong></p>
         <a href="{% url 'checkout' %}"><button class="submit-btn">Proceed to Checkout</button></a>
     </div>
     {% else %}

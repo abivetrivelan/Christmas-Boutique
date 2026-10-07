@@ -1,19 +1,26 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .cart import Cart
-from .forms import CartQuantityForm, CheckoutForm, ContactForm, NewsletterForm, RegisterForm
-from .models import Category, Order, OrderItem, Product
+from .cart import COUPON_SESSION_KEY, Cart
+from .forms import CartQuantityForm, CheckoutForm, ContactForm, CouponApplyForm, NewsletterForm, RegisterForm
+from .models import Category, Coupon, Order, OrderItem, Product
 
 
 class StockUnavailableError(Exception):
+    pass
+
+
+class CouponUnavailableError(Exception):
     pass
 
 
@@ -22,6 +29,29 @@ def invalid_cart_quantity_response(request, message='Choose a quantity from 1 to
         return JsonResponse({'error': message}, status=400)
     messages.error(request, message)
     return redirect('cart_detail')
+
+
+def coupon_summary(request, cart):
+    code = request.session.get(COUPON_SESSION_KEY, '')
+    coupon = Coupon.objects.filter(code=code).first() if code else None
+    subtotal = cart.get_total_price()
+    discount = Decimal('0.00')
+    error = ''
+
+    if code and coupon is None:
+        error = 'This coupon is no longer available.'
+    elif coupon:
+        error = coupon.validation_error(subtotal)
+        if not error:
+            discount = coupon.calculate_discount(subtotal)
+
+    return {
+        'coupon': coupon,
+        'coupon_error': error,
+        'coupon_form': CouponApplyForm(initial={'code': code}),
+        'discount_amount': discount,
+        'final_total': max(Decimal('0.00'), subtotal - discount),
+    }
 
 
 def home(request):
@@ -78,7 +108,9 @@ def product_detail(request, slug):
 
 def cart_detail(request):
     cart = Cart(request)
-    return render(request, 'shop/cart.html', {'cart': cart})
+    context = {'cart': cart}
+    context.update(coupon_summary(request, cart))
+    return render(request, 'shop/cart.html', context)
 
 
 @require_POST
@@ -124,6 +156,40 @@ def cart_update(request, product_id):
     return redirect('cart_detail')
 
 
+@require_POST
+def cart_apply_coupon(request):
+    cart = Cart(request)
+    if len(cart) == 0:
+        messages.error(request, 'Add an item to your cart before applying a coupon.')
+        return redirect('cart_detail')
+
+    form = CouponApplyForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, 'Enter a valid coupon code.')
+        return redirect('cart_detail')
+
+    coupon = Coupon.objects.filter(code__iexact=form.cleaned_data['code']).first()
+    if coupon is None:
+        messages.error(request, 'That coupon code was not found.')
+        return redirect('cart_detail')
+
+    error = coupon.validation_error(cart.get_total_price())
+    if error:
+        messages.error(request, error)
+        return redirect('cart_detail')
+
+    request.session[COUPON_SESSION_KEY] = coupon.code
+    messages.success(request, f'Coupon {coupon.code} applied.')
+    return redirect('cart_detail')
+
+
+@require_POST
+def cart_remove_coupon(request):
+    request.session.pop(COUPON_SESSION_KEY, None)
+    messages.info(request, 'Coupon removed from your cart.')
+    return redirect('cart_detail')
+
+
 def checkout(request):
     cart = Cart(request)
     if len(cart) == 0:
@@ -161,6 +227,39 @@ def checkout(request):
                                 'Please update your cart.'
                             )
 
+                    subtotal = sum(
+                        (
+                            locked_products[item['product'].pk].price * item['quantity']
+                            for item in cart_items
+                        ),
+                        Decimal('0.00'),
+                    )
+                    coupon_code = request.session.get(COUPON_SESSION_KEY)
+                    coupon = None
+                    discount_amount = Decimal('0.00')
+                    if coupon_code:
+                        coupon = Coupon.objects.select_for_update().filter(
+                            code=coupon_code,
+                        ).first()
+                        if coupon is None:
+                            raise CouponUnavailableError('This coupon is no longer available.')
+                        coupon_error = coupon.validation_error(subtotal)
+                        if coupon_error:
+                            raise CouponUnavailableError(coupon_error)
+                        discount_amount = coupon.calculate_discount(subtotal)
+
+                        usage_query = Coupon.objects.filter(pk=coupon.pk, is_active=True)
+                        usage_query = usage_query.filter(
+                            Q(usage_limit__isnull=True)
+                            | Q(used_count__lt=F('usage_limit'))
+                        )
+                        if coupon.expires_at:
+                            usage_query = usage_query.filter(expires_at__gt=timezone.now())
+                        if not usage_query.update(used_count=F('used_count') + 1):
+                            raise CouponUnavailableError(
+                                'This coupon has just reached its usage limit.'
+                            )
+
                     for item in cart_items:
                         product_id = item['product'].pk
                         quantity = item['quantity']
@@ -182,6 +281,8 @@ def checkout(request):
                         email=form.cleaned_data['email'],
                         address=form.cleaned_data['address'],
                         phone=form.cleaned_data['phone'],
+                        coupon=coupon,
+                        discount_amount=discount_amount,
                     )
                     for item in cart_items:
                         product = locked_products[item['product'].pk]
@@ -194,12 +295,18 @@ def checkout(request):
             except StockUnavailableError as error:
                 messages.error(request, str(error))
                 return redirect('cart_detail')
+            except CouponUnavailableError as error:
+                request.session.pop(COUPON_SESSION_KEY, None)
+                messages.error(request, str(error))
+                return redirect('cart_detail')
             cart.clear()
             return render(request, 'shop/order_success.html', {'order': order})
     else:
         form = CheckoutForm(initial=initial)
 
-    return render(request, 'shop/checkout.html', {'form': form, 'cart': cart})
+    context = {'form': form, 'cart': cart}
+    context.update(coupon_summary(request, cart))
+    return render(request, 'shop/checkout.html', context)
 
 
 def contact_view(request):

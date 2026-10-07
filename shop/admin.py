@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, ContactMessage, Newsletter, Order, OrderItem, Product
+from .models import Category, ContactMessage, Coupon, Newsletter, Order, OrderItem, Product
 
 
 @admin.register(Category)
@@ -25,9 +25,22 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'first_name', 'last_name', 'email', 'status', 'created_at', 'total_cost')
+    list_display = (
+        'id', 'first_name', 'last_name', 'email', 'status', 'coupon',
+        'discount_amount', 'created_at', 'total_cost',
+    )
     list_filter = ('status', 'created_at')
     inlines = [OrderItemInline]
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = (
+        'code', 'discount_type', 'value', 'minimum_order', 'expires_at',
+        'used_count', 'usage_limit', 'is_active',
+    )
+    list_filter = ('discount_type', 'is_active')
+    search_fields = ('code',)
 
 
 @admin.register(ContactMessage)

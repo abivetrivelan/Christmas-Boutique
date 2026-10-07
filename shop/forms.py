@@ -42,6 +42,13 @@ class CartQuantityForm(forms.Form):
     quantity = forms.IntegerField(min_value=1, max_value=99)
 
 
+class CouponApplyForm(forms.Form):
+    code = forms.CharField(max_length=32)
+
+    def clean_code(self):
+        return self.cleaned_data['code'].strip().upper()
+
+
 class NewsletterForm(HoneypotFormMixin, forms.ModelForm):
     website = forms.CharField(
         required=False,

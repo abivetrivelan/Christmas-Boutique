@@ -2,6 +2,7 @@ from decimal import Decimal
 from .models import Product
 
 CART_SESSION_ID = 'cart'
+COUPON_SESSION_KEY = 'coupon_code'
 MAX_CART_QUANTITY = 99
 
 
@@ -40,6 +41,8 @@ class Cart:
         product_id = str(product.id)
         if product_id in self.cart:
             del self.cart[product_id]
+            if not self.cart:
+                self.session.pop(COUPON_SESSION_KEY, None)
             self.save()
 
     def save(self):
@@ -47,6 +50,7 @@ class Cart:
 
     def clear(self):
         self.session[CART_SESSION_ID] = {}
+        self.session.pop(COUPON_SESSION_KEY, None)
         self.save()
 
     def __iter__(self):

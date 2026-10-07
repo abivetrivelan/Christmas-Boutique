@@ -1,10 +1,12 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
+from django.utils import timezone
 
 
 class Category(models.Model):
@@ -94,6 +96,82 @@ class ContactMessage(models.Model):
         return f'{self.first_name} {self.last_name} <{self.email}>'
 
 
+class Coupon(models.Model):
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'Percentage'),
+        ('flat', 'Fixed amount'),
+    ]
+
+    code = models.CharField(max_length=32, unique=True)
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES)
+    value = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    minimum_order = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
+    expires_at = models.DateTimeField(null=True, blank=True)
+    usage_limit = models.PositiveIntegerField(null=True, blank=True)
+    used_count = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['code']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(value__gt=0),
+                name='coupon_value_positive',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(discount_type='percent')
+                    | models.Q(value__lte=100)
+                ),
+                name='coupon_percent_at_most_100',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(minimum_order__gte=0),
+                name='coupon_minimum_nonnegative',
+            ),
+        ]
+
+    def clean(self):
+        self.code = self.code.strip().upper()
+        if self.discount_type == 'percent' and self.value > Decimal('100.00'):
+            raise ValidationError({'value': 'Percentage discounts cannot exceed 100%.'})
+
+    def save(self, *args, **kwargs):
+        self.code = self.code.strip().upper()
+        super().save(*args, **kwargs)
+
+    def validation_error(self, subtotal, at=None):
+        at = at or timezone.now()
+        if not self.is_active:
+            return 'This coupon is no longer active.'
+        if self.expires_at and self.expires_at <= at:
+            return 'This coupon has expired.'
+        if self.usage_limit is not None and self.used_count >= self.usage_limit:
+            return 'This coupon has reached its usage limit.'
+        if subtotal < self.minimum_order:
+            return f'Spend at least ${self.minimum_order} to use this coupon.'
+        return ''
+
+    def calculate_discount(self, subtotal):
+        if self.discount_type == 'percent':
+            discount = subtotal * self.value / Decimal('100')
+        else:
+            discount = min(self.value, subtotal)
+        return min(discount, subtotal).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    def __str__(self):
+        return self.code
+
+
 class Order(models.Model):
     """A customer order created at checkout."""
     STATUS_CHOICES = [
@@ -114,6 +192,15 @@ class Order(models.Model):
     address = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    coupon = models.ForeignKey(
+        Coupon, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders'
+    )
+    discount_amount = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00'))],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -124,7 +211,8 @@ class Order(models.Model):
 
     @property
     def total_cost(self):
-        return sum(item.line_total for item in self.items.all())
+        subtotal = sum((item.line_total for item in self.items.all()), Decimal('0.00'))
+        return max(Decimal('0.00'), subtotal - self.discount_amount)
 
 
 class OrderItem(models.Model):

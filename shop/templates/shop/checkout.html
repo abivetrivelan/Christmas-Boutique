@@ -47,7 +47,11 @@
             {% endfor %}
         </table>
         <div class="cart-summary">
-            <p>Total: <strong>${{ cart.get_total_price }}</strong></p>
+            <p>Subtotal: <strong>${{ cart.get_total_price }}</strong></p>
+            {% if coupon and not coupon_error %}
+                <p class="discount-line">Discount ({{ coupon.code }}): <strong>-${{ discount_amount }}</strong></p>
+            {% endif %}
+            <p>Total: <strong>${{ final_total }}</strong></p>
         </div>
     </div>
 </div>
