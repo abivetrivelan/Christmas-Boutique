@@ -6,7 +6,8 @@
     <h2>&#127876; Thank you, {{ order.first_name }}!</h2>
     <p>Your order <strong>#{{ order.pk }}</strong> has been placed.</p>
     <p>Total: <strong>${{ order.total_cost }}</strong></p>
-    <p>A confirmation has been sent to {{ order.email }}.</p>
+    <p>A confirmation is on its way to {{ order.email }}.</p>
+    <p><a href="{% url 'order_track' order.tracking_token %}">Track your order</a></p>
     <a href="{% url 'shop_all' %}"><button class="submit-btn">Continue Shopping</button></a>
 </div>
 {% endblock %}

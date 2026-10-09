@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: christmas-boutique
+    runtime: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+    startCommand: gunicorn ecom_project.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "christmas-boutique.onrender.com,localhost,127.0.0.1"
+      - key: SITE_URL
+        value: "https://christmas-boutique.onrender.com"
+      - key: DEFAULT_FROM_EMAIL
+        value: "orders@christmas-boutique.onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: christmas-boutique-db
+          property: connectionString
+
+databases:
+  - name: christmas-boutique-db
+    databaseName: christmasboutique
+    user: christmasboutique

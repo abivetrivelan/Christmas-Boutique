@@ -1,0 +1,49 @@
+{% extends 'shop/base.html' %}
+{% block title %}Track Order #{{ order.pk }} - The Christmas Boutique{% endblock %}
+
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Home</a> <span aria-hidden="true">/</span> Order tracking</div>
+<section class="tracking-page">
+    <div class="tracking-heading">
+        <p class="section-kicker">Your order / {{ order.created_at|date:"M d, Y" }}</p>
+        <h1>Order <em>#{{ order.pk }}</em></h1>
+        <p class="tracking-status">{{ order.get_status_display }}</p>
+    </div>
+
+    <div class="tracking-layout">
+        <section class="tracking-items" aria-labelledby="tracking-items-heading">
+            <h2 id="tracking-items-heading">In your order</h2>
+            {% for item in order.items.all %}
+            <div class="tracking-item">
+                <span>{{ item.product.name }} <small>&times; {{ item.quantity }}</small></span>
+                <strong>${{ item.line_total }}</strong>
+            </div>
+            {% endfor %}
+            {% if order.discount_amount %}
+            <div class="tracking-item discount-line">
+                <span>Discount{% if order.coupon %} ({{ order.coupon.code }}){% endif %}</span>
+                <strong>-${{ order.discount_amount }}</strong>
+            </div>
+            {% endif %}
+            <div class="tracking-total"><span>Total</span><strong>${{ order.total_cost }}</strong></div>
+        </section>
+
+        <section class="tracking-history" aria-labelledby="tracking-history-heading">
+            <h2 id="tracking-history-heading">Order updates</h2>
+            <ol>
+                {% for event in order.status_history.all %}
+                <li>
+                    <span class="history-marker" aria-hidden="true"></span>
+                    <div><strong>{{ event.get_status_display }}</strong>
+                        <time datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|date:"M d, Y, g:i A" }}</time>
+                        {% if event.note %}<p>{{ event.note }}</p>{% endif %}
+                    </div>
+                </li>
+                {% empty %}
+                <li><strong>{{ order.get_status_display }}</strong></li>
+                {% endfor %}
+            </ol>
+        </section>
+    </div>
+</section>
+{% endblock %}

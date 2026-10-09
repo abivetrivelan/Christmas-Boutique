@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import Category, ContactMessage, Coupon, Newsletter, Order, OrderItem, Product
+from .models import Category, ContactMessage, Coupon, Newsletter, Order, OrderItem, OrderStatusHistory, Product
+from .order_services import update_order_status
 
 
 @admin.register(Category)
@@ -23,6 +24,16 @@ class OrderItemInline(admin.TabularInline):
     extra = 0
 
 
+class OrderStatusHistoryInline(admin.TabularInline):
+    model = OrderStatusHistory
+    extra = 0
+    can_delete = False
+    readonly_fields = ('status', 'note', 'changed_by', 'created_at')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
@@ -30,7 +41,24 @@ class OrderAdmin(admin.ModelAdmin):
         'discount_amount', 'created_at', 'total_cost',
     )
     list_filter = ('status', 'created_at')
-    inlines = [OrderItemInline]
+    inlines = [OrderItemInline, OrderStatusHistoryInline]
+
+    def save_model(self, request, obj, form, change):
+        previous_status = None
+        if change:
+            previous_status = Order.objects.only('status').get(pk=obj.pk).status
+        requested_status = obj.status
+        if previous_status and previous_status != requested_status:
+            obj.status = previous_status
+        super().save_model(request, obj, form, change)
+        if previous_status and previous_status != requested_status:
+            update_order_status(obj, requested_status, changed_by=request.user)
+        elif not change:
+            OrderStatusHistory.objects.create(
+                order=obj,
+                status=obj.status,
+                changed_by=request.user,
+            )
 
 
 @admin.register(Coupon)

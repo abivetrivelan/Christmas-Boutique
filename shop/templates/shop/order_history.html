@@ -10,7 +10,7 @@
         <tbody>
         {% for order in orders %}
             <tr>
-                <td>#{{ order.pk }}</td>
+                <td><a href="{% url 'order_track' order.tracking_token %}">#{{ order.pk }}</a></td>
                 <td>{{ order.created_at|date:"M d, Y" }}</td>
                 <td>{{ order.get_status_display }}</td>
                 <td>${{ order.total_cost }}</td>

@@ -13,7 +13,8 @@ from django.views.decorators.http import require_POST
 
 from .cart import COUPON_SESSION_KEY, Cart
 from .forms import CartQuantityForm, CheckoutForm, ContactForm, CouponApplyForm, NewsletterForm, RegisterForm
-from .models import Category, Coupon, Order, OrderItem, Product
+from .models import Category, Coupon, Order, OrderItem, OrderStatusHistory, Product
+from .order_services import queue_order_confirmation
 
 
 class StockUnavailableError(Exception):
@@ -292,6 +293,11 @@ def checkout(request):
                             price=product.price,
                             quantity=item['quantity'],
                         )
+                    OrderStatusHistory.objects.create(
+                        order=order,
+                        status=order.status,
+                    )
+                    queue_order_confirmation(order)
             except StockUnavailableError as error:
                 messages.error(request, str(error))
                 return redirect('cart_detail')
@@ -356,3 +362,11 @@ def register_view(request):
 def order_history(request):
     orders = Order.objects.filter(user=request.user)
     return render(request, 'shop/order_history.html', {'orders': orders})
+
+
+def order_track(request, tracking_token):
+    order = get_object_or_404(
+        Order.objects.prefetch_related('items__product', 'status_history'),
+        tracking_token=tracking_token,
+    )
+    return render(request, 'shop/order_tracking.html', {'order': order})

@@ -1,0 +1,15 @@
+{{ heading }}
+
+Hello {{ order.first_name }},
+
+{{ introduction }}
+Order #{{ order.pk }}
+
+{% for item in items %}{{ item.product.name }} x {{ item.quantity }}: ${{ item.line_total }}
+{% endfor %}{% if order.discount_amount %}Discount{% if order.coupon %} ({{ order.coupon.code }}){% endif %}: -${{ order.discount_amount }}
+{% endif %}Total: ${{ order.total_cost }}
+
+Track your order: {{ tracking_url }}
+
+With care,
+The Christmas Boutique

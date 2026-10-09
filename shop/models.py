@@ -1,4 +1,5 @@
 from decimal import Decimal, ROUND_HALF_UP
+import uuid
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -201,6 +202,7 @@ class Order(models.Model):
         default=Decimal('0.00'),
         validators=[MinValueValidator(Decimal('0.00'))],
     )
+    tracking_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -239,6 +241,26 @@ class OrderItem(models.Model):
     @property
     def line_total(self):
         return self.price * self.quantity
+
+
+class OrderStatusHistory(models.Model):
+    order = models.ForeignKey(Order, related_name='status_history', on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES)
+    note = models.CharField(max_length=255, blank=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='order_status_changes',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'Order #{self.order_id}: {self.get_status_display()}'
 
 
 class Newsletter(models.Model):

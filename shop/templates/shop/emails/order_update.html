@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ heading }}</title>
+</head>
+<body style="margin:0;padding:32px;background:#faf6ee;color:#1c1c1c;font-family:Arial,sans-serif;">
+    <main style="max-width:620px;margin:0 auto;padding:32px;background:#fff;border-top:4px solid #c6a15b;">
+        <p style="margin:0 0 12px;color:#7a1f2b;font-size:12px;text-transform:uppercase;">The Christmas Boutique</p>
+        <h1 style="margin:0 0 16px;color:#123524;font-family:Georgia,serif;font-size:30px;font-weight:normal;">{{ heading }}</h1>
+        <p>Hello {{ order.first_name }},</p>
+        <p>{{ introduction }}</p>
+        <p><strong>Order #{{ order.pk }}</strong></p>
+        <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            {% for item in items %}
+            <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #e5e0d6;">{{ item.product.name }} &times; {{ item.quantity }}</td>
+                <td style="padding:10px 0;border-bottom:1px solid #e5e0d6;text-align:right;">${{ item.line_total }}</td>
+            </tr>
+            {% endfor %}
+            {% if order.discount_amount %}
+            <tr>
+                <td style="padding:10px 0;color:#7a1f2b;">Discount{% if order.coupon %} ({{ order.coupon.code }}){% endif %}</td>
+                <td style="padding:10px 0;color:#7a1f2b;text-align:right;">-${{ order.discount_amount }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td style="padding:14px 0;font-weight:bold;">Total</td>
+                <td style="padding:14px 0;text-align:right;font-weight:bold;">${{ order.total_cost }}</td>
+            </tr>
+        </table>
+        <p><a href="{{ tracking_url }}" style="display:inline-block;padding:13px 18px;background:#7a1f2b;color:#fff;text-decoration:none;">Track your order</a></p>
+        <p style="margin-top:28px;color:#6b6f6a;font-size:12px;">With care,<br>The Christmas Boutique</p>
+    </main>
+</body>
+</html>

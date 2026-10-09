@@ -117,6 +117,34 @@ Wix look:
 Re-run `python manage.py collectstatic` only when deploying; it's not needed
 for local development.
 
+## Deployment checklist
+
+This project is now ready for a standard Django deployment flow with environment variables and a production WSGI server.
+
+```bash
+# install runtime dependencies
+pip install -r requirements.txt
+
+# set production env vars for your host
+export SECRET_KEY="replace-with-a-long-random-secret"
+export DEBUG="False"
+export ALLOWED_HOSTS="your-domain.com,localhost,127.0.0.1"
+export CSRF_TRUSTED_ORIGINS="https://your-domain.com"
+export SITE_URL="https://your-domain.com"
+export DEFAULT_FROM_EMAIL="orders@your-domain.com"
+
+# collect static files
+python manage.py collectstatic --noinput
+
+# apply database migrations
+python manage.py migrate
+
+# start with Gunicorn
+gunicorn ecom_project.wsgi:application --bind 0.0.0.0:8000
+```
+
+Use a provider such as Render, Railway, Fly.io, or a VM that supports Django. For managed hosting, set the same values in the platform environment section instead of a local `.env` file.
+
 ## Next steps you could add
 
 - Real payment gateway (Stripe/Razorpay) at checkout instead of a plain order form

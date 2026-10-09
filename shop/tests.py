@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.db import IntegrityError, transaction
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from .models import ContactMessage, Newsletter, Order, OrderItem, Product, Category
@@ -351,6 +352,80 @@ class StorefrontTests(TestCase):
 		self.product.refresh_from_db()
 		self.assertEqual(self.product.stock, 20)
 		self.assertEqual(self.client.session['cart'], {str(self.product.pk): 1})
+
+	@override_settings(
+		EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+		DEFAULT_FROM_EMAIL='orders@example.com',
+		SITE_URL='https://boutique.example',
+	)
+	def test_checkout_sends_order_confirmation_with_tracking_link(self):
+		self.client.post(
+			reverse('cart_add', args=[self.product.pk]),
+			{'quantity': '1'},
+		)
+
+		with self.captureOnCommitCallbacks(execute=True):
+			response = self.client.post(reverse('checkout'), self.checkout_data())
+
+		self.assertEqual(response.status_code, 200)
+		order = Order.objects.get()
+		self.assertEqual(len(mail.outbox), 1)
+		self.assertEqual(mail.outbox[0].to, ['avery@example.com'])
+		self.assertIn(str(order.tracking_token), mail.outbox[0].body)
+		self.assertIn('https://boutique.example', mail.outbox[0].alternatives[0][0])
+
+	def test_customer_can_track_an_order_with_its_private_token(self):
+		from .models import OrderStatusHistory
+
+		order = Order.objects.create(
+			first_name='Avery',
+			email='avery@example.com',
+			address='12 Pine Street',
+		)
+		OrderItem.objects.create(
+			order=order,
+			product=self.product,
+			price=self.product.price,
+			quantity=1,
+		)
+		OrderStatusHistory.objects.create(order=order, status='pending')
+
+		response = self.client.get(reverse('order_track', args=[order.tracking_token]))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, f'Order #{order.pk}')
+		self.assertContains(response, 'Pending')
+		self.assertContains(response, self.product.name)
+		self.assertEqual(
+			self.client.get(reverse('order_track', args=['00000000-0000-0000-0000-000000000000'])).status_code,
+			404,
+		)
+
+	@override_settings(
+		EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+		DEFAULT_FROM_EMAIL='orders@example.com',
+		SITE_URL='https://boutique.example',
+	)
+	def test_status_change_records_history_and_sends_email(self):
+		from .order_services import update_order_status
+		from .models import OrderStatusHistory
+
+		order = Order.objects.create(
+			first_name='Avery',
+			email='avery@example.com',
+			address='12 Pine Street',
+		)
+		OrderStatusHistory.objects.create(order=order, status='pending')
+
+		with self.captureOnCommitCallbacks(execute=True):
+			changed = update_order_status(order, 'shipped')
+
+		self.assertTrue(changed)
+		self.assertEqual(order.status_history.count(), 2)
+		self.assertEqual(order.status_history.latest('created_at').status, 'shipped')
+		self.assertEqual(len(mail.outbox), 1)
+		self.assertEqual(mail.outbox[0].to, ['avery@example.com'])
+		self.assertIn('shipped', mail.outbox[0].subject.lower())
 
 	def test_checkout_confirmation_escapes_customer_input(self):
 		self.client.post(

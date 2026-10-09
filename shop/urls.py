@@ -21,6 +21,7 @@ urlpatterns = [
     path('newsletter/', views.newsletter_signup, name='newsletter_signup'),
 
     path('register/', views.register_view, name='register'),
+    path('orders/track/<uuid:tracking_token>/', views.order_track, name='order_track'),
     path('login/', auth_views.LoginView.as_view(template_name='shop/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('orders/', views.order_history, name='order_history'),
