@@ -117,33 +117,31 @@ Wix look:
 Re-run `python manage.py collectstatic` only when deploying; it's not needed
 for local development.
 
-## Deployment checklist
+## Deploying to Railway
 
-This project is now ready for a standard Django deployment flow with environment variables and a production WSGI server.
+`runtime.txt` selects Python 3.12.7, and the `Procfile` defines the Gunicorn
+web command. Configure the remaining settings in the Railway dashboard:
 
-```bash
-# install runtime dependencies
-pip install -r requirements.txt
+1. Create a Railway project and deploy this GitHub repository as a service.
+2. Add a PostgreSQL service to the project. In the Django service's Variables
+   settings, add `DATABASE_URL` as a reference to the PostgreSQL service's
+   `DATABASE_URL`.
+3. In the Django service's Settings, set the build command to
+   `python manage.py collectstatic --noinput` and the pre-deploy command to
+   `python manage.py migrate --noinput`. The Procfile supplies the start
+   command: `gunicorn ecom_project.wsgi:application --bind 0.0.0.0:$PORT`.
+4. Set `SECRET_KEY` to a newly generated secret and `DEBUG` to `False`.
+   Railway provides `RAILWAY_PUBLIC_DOMAIN`; the Django settings use it for
+   allowed hosts, trusted HTTPS origins, and the default `SITE_URL`.
+5. Generate a public domain for the Django service and wait for the deployment
+   to finish. The storefront should be available at that domain, and the admin
+   panel at `/admin/`.
+6. If you need the sample products, run `python manage.py seed_data` once in
+   the service's shell. Create an administrator with
+   `python manage.py createsuperuser` in the same way.
 
-# set production env vars for your host
-export SECRET_KEY="replace-with-a-long-random-secret"
-export DEBUG="False"
-export ALLOWED_HOSTS="your-domain.com,localhost,127.0.0.1"
-export CSRF_TRUSTED_ORIGINS="https://your-domain.com"
-export SITE_URL="https://your-domain.com"
-export DEFAULT_FROM_EMAIL="orders@your-domain.com"
-
-# collect static files
-python manage.py collectstatic --noinput
-
-# apply database migrations
-python manage.py migrate
-
-# start with Gunicorn
-gunicorn ecom_project.wsgi:application --bind 0.0.0.0:8000
-```
-
-Use a provider such as Render, Railway, Fly.io, or a VM that supports Django. For managed hosting, set the same values in the platform environment section instead of a local `.env` file.
+The shop currently records orders but does not process payments. Connect and
+test a payment provider before accepting live orders.
 
 ## Next steps you could add
 

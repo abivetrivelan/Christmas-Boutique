@@ -26,6 +26,7 @@ load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False').lower() in {'true', '1', 'yes'}
+RAILWAY_PUBLIC_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get(
@@ -33,11 +34,15 @@ ALLOWED_HOSTS = [
     ).split(',')
     if host.strip()
 ]
+if RAILWAY_PUBLIC_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
     if origin.strip()
 ]
+if RAILWAY_PUBLIC_DOMAIN:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_PUBLIC_DOMAIN}')
 
 if not SECRET_KEY:
     if DEBUG:
@@ -166,4 +171,7 @@ LOGOUT_REDIRECT_URL = 'home'
 # Email (contact form / order confirmation emails print to console in dev)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'orders@christmasboutique.local')
-SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
+SITE_URL = os.environ.get(
+    'SITE_URL',
+    f'https://{RAILWAY_PUBLIC_DOMAIN}' if RAILWAY_PUBLIC_DOMAIN else 'http://localhost:8000',
+)
